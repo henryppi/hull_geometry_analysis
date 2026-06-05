@@ -13,8 +13,8 @@ step_reader = STEPControl_Reader() # Create a STEPControl_Reader instance
 
 #path and filename
 path_str = './CAD/'
-# fn = '20m_Craft.stp'
-fn = 'Full_Hull_Innovator.stp'
+fn = '20m_Craft.stp'
+# fn = 'Full_Hull_Innovator.stp'
 step_file_path = path_str+fn
 output_file_path = path_str+fn[:-4]+'.stl'
 
