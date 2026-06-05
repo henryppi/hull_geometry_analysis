@@ -5,6 +5,10 @@ from OCC.Core.TopAbs import TopAbs_SOLID
 # from OCC.Core.BRepPrimAPI import BRepPrimAPI_MakeBox
 import os
 
+# conda create --name pyoccenv python=3.12 -y
+# conda activate pyoccenv
+# conda install -c conda-forge pythonocc-core
+
 step_reader = STEPControl_Reader() # Create a STEPControl_Reader instance
 
 #path and filename
