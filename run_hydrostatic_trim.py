@@ -5,7 +5,6 @@ from my_modules import get_outline_xz_plane, plot3D_line, plot_line_xz
 from my_modules import TriSurface
 from my_modules import RigidBody
 
-
 fn_hull = './CAD/20m_Craft.stl'
 
 rho_water = 997.561 #[kg/m^3] density  (H2O starccm+ )
