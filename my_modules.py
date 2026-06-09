@@ -2,7 +2,6 @@ import numpy as np
 import vtk
 import matplotlib.pyplot as plt
 from scipy import linalg
-from scipy.optimize import leastsq
 from scipy.optimize import least_squares
 import bezier
 
@@ -15,7 +14,6 @@ def vecMag(v):
     
 def get_bbox(vert):
     return np.min(vert[:,0]),np.max(vert[:,0]),np.min(vert[:,1]),np.max(vert[:,1])
-
     
 def get4x4TransformationRotMat(R,t):
     M = np.matrix(np.zeros([4,4],float))
@@ -26,7 +24,7 @@ def get4x4TransformationRotMat(R,t):
 
 def get_outline_xz_plane(fn_stl):
     reader = vtk.vtkSTLReader()
-    reader.SetFileName(fn_stl) # Replace with your STL file
+    reader.SetFileName(fn_stl)
     reader.Update()
     polydata = reader.GetOutput()
 
@@ -93,11 +91,7 @@ def plot_line_xz(ax,vert,elem,color,linewidth,linestyle):
                                     linestyle=linestyle)
 
 def nonlinear_least_squares_scipy_bounds(ferr,v0,bounds,data):
-    # print(v0)
-    # test = ferr(v0,data)
-    # print(test)
     tmp = []
-    # fun(x, *args, **kwargs)
     sol = least_squares(ferr,v0, args=(tmp,data),bounds=bounds)
     return sol.x
 
@@ -114,6 +108,10 @@ def computePointLineDistance(points,xa,ya,xb,yb):
     t = np.max([np.zeros(nP,float),np.min([np.ones(nP,float),computeDotVectorized(points-pa,pb - pa)/len2],axis=0)],axis=0)
     p = np.concatenate([np.array([points[:,0]-(xa + t*(xb-xa))]).T,np.array([points[:,1]-(ya + t*(yb-ya))]).T],axis=1)
     return np.linalg.norm(p,axis=1)
+
+def cubic_bezier(t, p0, p1, p2, p3):
+    return (1 - t)**3 * p0 + 3 * (1 - t)**2 * t * p1 + 3 * (1 - t) * t**2 * p2 + t**3 * p3
+
 
 def fit_bezier_rudder(points,para_init):
         
@@ -213,15 +211,11 @@ def fit_bezier_rudder(points,para_init):
         
         nV = vertices.shape[0]
         
-        # vertices[:,0] += -np.min(vertices[:,0])
-        
         elements = np.zeros([nV-1,2],int)
         elements[:,0] = np.arange(0,nV-1,1)
         elements[:,1] = np.arange(1,nV,1)
 
-        if not tail_open==True:
-            # print(vertices.shape)
-            # print(np.array([seg_nodes[:,3]]))
+        if not tail_open==True:#check if working
             vertices = np.append(vertices,np.array([seg_nodes[:,3]]),axis=0)
             elements = np.append(elements,np.array([[nV,nV+1]]),axis=0)
 
@@ -234,30 +228,13 @@ def fit_bezier_rudder(points,para_init):
         return vert,elem
 
     def error_function(para,tmp,data):
-        # print('errf')
-        # print(np.around(para,2).tolist())
         LARGE = 1e10
-
         points = data.reshape([-1,2])
         n_points = points.shape[0]
-
         vertices,elements = rudder_fun(para)
-
-        # fig, ax = plt.subplots(figsize=(8,8),frameon=False)
-        # ax.plot(points[:,0],points[:,1],'.r')
-        # ax.plot(vertices[:,0],vertices[:,1],'+-k',lw=2)
-        # ax.axis('equal')
-        # plt.show()
-
-        # vertices[:,0] += para[0]
-        # vertices[:,1] += para[1]
         nE = elements.shape[0]
-        # print(nE)
-        # print(points.shape)
         pDist = LARGE*np.ones(n_points)
         for iE in range(nE):
-            # print(iE)
-            # print(elements[iE,:])
             tmpDist = computePointLineDistance(points, \
                                             vertices[elements[iE,0],0], \
                                             vertices[elements[iE,0],1], \
@@ -266,16 +243,7 @@ def fit_bezier_rudder(points,para_init):
             pDist = np.minimum(pDist,tmpDist)
         return pDist
 
-    # def fit(points,rudder_fun,para_init):
-    #     point_list = self.para_to_nodes(self.init_para)
-    #     vert,elem = gen_bezier_4point_segments(point_list,open=True)
-    #     data = points.ravel()
-    #     error_function_bezier(para,tmp,data)
-    #     return para
-
     data = points.ravel()
-    # points[:,0] += -para[0]
-    # points[:,1] += -para[1]
 
     # para = [x,y,L,t,h,xfrac,wlead,wfwd,wrev,wtail]
     #        [0,1,2,3,4,  5  ,  6  , 7  ,  8 ,  9  ] 
@@ -294,16 +262,7 @@ def fit_bezier_rudder(points,para_init):
     bounds = (b_low,b_high)
 
     para_fit = nonlinear_least_squares_scipy_bounds(error_function,para_init,bounds,data)
-    # para_fine = [cx+para5[0],\
-    #             cy+para5[1],\
-    #             aoa]
-    # para_fine.extend(para5[2:])
-    # para = fit(points,rudder_fun,para_init)
 
-    # bbox = get_bbox(points)
-    
-    # vert,elem = rudder_fun(para_init)
-    # return vert,elem
     vert_fit,elem_fit = rudder_fun(para_fit)
     return para_fit,vert_fit,elem_fit
 
@@ -554,7 +513,6 @@ class TriSurface:
         self.elements = np.concatenate([self.elements,elemNew])
 
         return indUnder, indAbove
-        
 
     def getCutIndices(self):
         n = self.vertices.shape[0]
