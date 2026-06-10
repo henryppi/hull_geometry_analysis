@@ -3,17 +3,18 @@ import matplotlib.pyplot as plt
 
 from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_ThruSections
 from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeEdge
-from OCC.Core.gp import gp_Pnt, gp_Trsf, gp_Vec
+from OCC.Core.gp import gp_Pnt
+# from OCC.Core.gp import gp_Trsf, gp_Vec
 
 # from OCC.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCC.Display.SimpleGui import init_display
 
 from OCC.Extend.DataExchange import write_step_file
 
-from OCC.Core.gp import gp_Pnt, gp_Circ, gp_XOY
+from OCC.Core.gp import gp_Pnt, gp_XOY
 from OCC.Core.TColgp import TColgp_Array1OfPnt
-from OCC.Core.Geom import Geom_BSplineCurve
-from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_MakePipeShell
+# from OCC.Core.Geom import Geom_BSplineCurve
+# from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_MakePipeShell
 from OCC.Core.GeomAPI import GeomAPI_PointsToBSpline
 
 from my_modules import get_bbox
@@ -43,36 +44,32 @@ L_unit = 1000
 
 L_bottom = 50+220
 scale_bottom = L_bottom/L_unit
-points = np.copy(points_unit)
-points *=scale_bottom
-bbox3 = get_bbox(points)
+points_bottom = np.copy(points_unit)
+# points_bottom *=scale_bottom
+bbox3 = get_bbox(points_bottom)
 print('L_bottom = ',bbox3[1]-bbox3[0])
 print('t_bottom = ',bbox3[3]-bbox3[2])
 
-p0_tail = gp_Pnt(points[-1,0],points[-1,1],0)
-p1_tail = gp_Pnt(points[0,0],points[0,1],0)
-edge_tail = BRepBuilderAPI_MakeEdge(p0_tail, p1_tail).Edge()
+p0_tail_bottom = gp_Pnt(points_bottom[-1,0],points_bottom[-1,1],0)
+p1_tail_bottom = gp_Pnt(points_bottom[0,0],points_bottom[0,1],0)
+edge_tail_bottom = BRepBuilderAPI_MakeEdge(p0_tail_bottom, p1_tail_bottom).Edge()
 
-point_list = []
+point_list_bottom = []
 for i in range(npoints):
-    point_list.append(gp_Pnt(points[i,0],points[i,1],0))
+    point_list_bottom.append(gp_Pnt(points_bottom[i,0],points_bottom[i,1],0))
 
-point_arr = TColgp_Array1OfPnt(1, npoints)
-for i, p in enumerate(point_list):
-    point_arr.SetValue(i + 1, p)
-
-# spline = Geom_BSplineCurve(point_arr)
-# section_wire = BRepBuilderAPI_MakeWire(\
-#                BRepBuilderAPI_MakeEdge(spline).Edge() ).Wire()
+point_arr_bottom = TColgp_Array1OfPnt(1, npoints)
+for i, p in enumerate(point_list_bottom):
+    point_arr_bottom.SetValue(i + 1, p)
 
 # 3. Interpolate the points to create a B-Spline curve geometry
-bspline_geom = GeomAPI_PointsToBSpline(point_arr).Curve()
+bspline_geom_bottom = GeomAPI_PointsToBSpline(point_arr_bottom).Curve()
 
 # 4. Turn the geometric curve into a topological Edge
-spline_edge = BRepBuilderAPI_MakeEdge(bspline_geom).Edge()
+spline_edge_bottom = BRepBuilderAPI_MakeEdge(bspline_geom_bottom).Edge()
 
 # 5. Build the final topological Wire from the edge
-profile_wire = BRepBuilderAPI_MakeWire(spline_edge,edge_tail).Wire()
+profile_wire_bottom = BRepBuilderAPI_MakeWire(spline_edge_bottom,edge_tail_bottom).Wire()
 
 # upper profile
 # blunt tail edge
@@ -80,13 +77,13 @@ profile_wire = BRepBuilderAPI_MakeWire(spline_edge,edge_tail).Wire()
 L_up = 125+275
 scale_up = L_up/L_unit
 points_up = np.copy(points_unit)
-points_up *=scale_up
+# points_up *=scale_up
 
 bbox4 = get_bbox(points_up)
 print('L_up = ',bbox4[1]-bbox4[0])
 print('t_up = ',bbox4[3]-bbox4[2])
 
-points_up = np.copy(points_raw)
+points_up = np.copy(points_unit)
 p0_tail_up = gp_Pnt(points_up[-1,0],points_up[-1,1],z)
 p1_tail_up = gp_Pnt(points_up[0,0],points_up[0,1],z)
 edge_tail_up = BRepBuilderAPI_MakeEdge(p0_tail_up, p1_tail_up).Edge()
@@ -117,7 +114,7 @@ profile_wire_up = BRepBuilderAPI_MakeWire(spline_edge_up,edge_tail_up).Wire()
 # BRepOffsetAPI_ThruSections(isSolid, ruled, pres3d)
 lofter = BRepOffsetAPI_ThruSections(True, False) # True for solid, False for smooth loft
 
-lofter.AddWire(profile_wire)
+lofter.AddWire(profile_wire_bottom)
 lofter.AddWire(profile_wire_up)
 
 # Optional settings
