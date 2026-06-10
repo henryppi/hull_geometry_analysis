@@ -1,3 +1,5 @@
+import numpy as np
+import matplotlib as plt
 # points = np.array(points)
 # points = np.unique(points,axis=0)
 
