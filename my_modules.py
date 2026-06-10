@@ -112,9 +112,11 @@ def computePointLineDistance(points,xa,ya,xb,yb):
 def cubic_bezier(t, p0, p1, p2, p3):
     return (1 - t)**3 * p0 + 3 * (1 - t)**2 * t * p1 + 3 * (1 - t) * t**2 * p2 + t**3 * p3
 
+def quadratic_bezier(t, p0, p1, p2):
+    return (1 - t)**2 * p0 + 2 * (1 - t) * t * p1 + t**2 * p2
+    
 
 def fit_bezier_rudder(points,para_init):
-        
     def para_to_nodes(para):
         # para = [x,y,L,t,h,xfrac,wlead,wfwd,wrev,wtail]
         #        [0.33, 0.05, 0.25, 0.2, 0.2, 0.2]
@@ -265,6 +267,160 @@ def fit_bezier_rudder(points,para_init):
 
     vert_fit,elem_fit = rudder_fun(para_fit)
     return para_fit,vert_fit,elem_fit
+
+def fit_bezier_prop_section(points,para_init):
+    def para_to_nodes(para):
+        # para = [x,y,L,t,h,xfrac,wlead,wfwd,wrev,wtail]
+        #        [0.33, 0.05, 0.25, 0.2, 0.2, 0.2]
+        x = para[0]
+        y = para[1]
+        L = para[2]
+        t = para[3]
+        h = para[4]
+        xfrac = para[5]
+        wlead = para[6]
+        wfwd = para[7]
+        wrev = para[8]
+        wtail = para[9]
+
+        x0 = 0.0 + L 
+        y0 = 0.0 + h
+
+        x1 = 0.0 + (1-wtail)*L
+        y1 = 0.0 + h
+
+        x2 = 0.0 + xfrac*L+wrev*L 
+        y2 = 0.0 + 0.5*t
+
+        x3 = 0.0 + xfrac*L
+        y3 = 0.0 + 0.5*t
+
+        x4 = x3-wfwd*L
+        y4 = 0.0 + 0.5*t
+
+        x5 = 0.0
+        y5 = 0.0 + wlead*t
+
+        x6 = 0.0
+        y6 = 0.0
+        # 
+        x7 = x + x6
+        y7 = y -y5
+
+        x8 = x + x4
+        y8 = y -y4
+
+        x9 = x + x3
+        y9 = y -y3
+
+        x10 = x + x2
+        y10 = y -y2
+
+        x11 = x + x1
+        y11 = y -y1
+
+        x12 = x + x0
+        y12 = y -y0
+
+        x0+=x
+        x1+=x
+        x2+=x
+        x3+=x
+        x4+=x
+        x5+=x
+        x6+=x
+
+        nodesA = np.asfortranarray([\
+                [x0, x1, x2, x3],\
+                [y0, y1, y2, y3],\
+                ])
+        nodesB = np.asfortranarray([\
+                [x3, x4, x5, x6],\
+                [y3, y4, y5, y6],\
+                ])
+        nodesC = np.asfortranarray([\
+                [x6, x7, x8, x9],\
+                [y6, y7, y8, y9],\
+                ])
+        nodesD = np.asfortranarray([\
+                [x9, x10, x11, x12],\
+                [y9, y10, y11, y12],\
+                ])
+
+        return [nodesA,nodesB,nodesC,nodesD]
+
+    def gen_bezier_4point_segments(point_list,nseg=25,tail_open=True):
+        nspline = len(point_list)
+        
+        s_vals = np.linspace(0.0, 1.0, nseg)
+        vertices = np.empty([0,2])
+        for i in range(nspline):
+            seg_nodes = point_list[i]
+            seg_curve = bezier.Curve(seg_nodes, degree=3)
+            if i==nspline-1:
+                seg_vertices = (seg_curve.evaluate_multi(s_vals)).T
+            else:
+                seg_vertices = (seg_curve.evaluate_multi(s_vals[:-1])).T
+            vertices = np.append(vertices,seg_vertices,axis=0)
+        
+        nV = vertices.shape[0]
+        
+        elements = np.zeros([nV-1,2],int)
+        elements[:,0] = np.arange(0,nV-1,1)
+        elements[:,1] = np.arange(1,nV,1)
+
+        if not tail_open==True:#check if working
+            vertices = np.append(vertices,np.array([seg_nodes[:,3]]),axis=0)
+            elements = np.append(elements,np.array([[nV,nV+1]]),axis=0)
+
+        return vertices,elements 
+    
+    def rudder_fun(para,nSeg=25):
+        node_list = para_to_nodes(para)
+        tail_open = True
+        vert,elem = gen_bezier_4point_segments(node_list,nseg=nSeg,tail_open=tail_open)
+        return vert,elem
+
+    def error_function(para,tmp,data):
+        LARGE = 1e10
+        points = data.reshape([-1,2])
+        n_points = points.shape[0]
+        vertices,elements = rudder_fun(para)
+        nE = elements.shape[0]
+        pDist = LARGE*np.ones(n_points)
+        for iE in range(nE):
+            tmpDist = computePointLineDistance(points, \
+                                            vertices[elements[iE,0],0], \
+                                            vertices[elements[iE,0],1], \
+                                            vertices[elements[iE,1],0], \
+                                            vertices[elements[iE,1],1])
+            pDist = np.minimum(pDist,tmpDist)
+        return pDist
+
+    data = points.ravel()
+
+    # para = [x,y,L,t,h,xfrac,wlead,wfwd,wrev,wtail]
+    #        [0,1,2,3,4,  5  ,  6  , 7  ,  8 ,  9  ] 
+    b_low = len(para_init)*[-np.inf]
+    b_high = len(para_init)*[np.inf]
+    b_low[3] = 0
+    b_low[4] = 0
+    b_low[5] = 0
+    b_low[6] = 0
+    b_low[7] = 0
+    b_low[8] = 0
+    b_low[9] = 0
+    b_high[2] = para_init[2]*1.0
+    b_high[3] = para_init[3]*1.0
+    b_high[4] = para_init[3]*1.0
+    bounds = (b_low,b_high)
+
+    para_fit = nonlinear_least_squares_scipy_bounds(error_function,para_init,bounds,data)
+
+    vert_fit,elem_fit = rudder_fun(para_fit)
+    return para_fit,vert_fit,elem_fit
+
+
 
 class TriSurface:
     def __init__(self):
