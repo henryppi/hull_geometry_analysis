@@ -16,19 +16,39 @@ from OCC.Core.Geom import Geom_BSplineCurve
 from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_MakePipeShell
 from OCC.Core.GeomAPI import GeomAPI_PointsToBSpline
 
+from my_modules import get_bbox
+
 fn = './data_files/section_points_rudder_bezier_fit.dat'
 points_raw = np.loadtxt(fn,delimiter=',',skiprows=0)
 npoints = points_raw.shape[0]
 
+bbox = get_bbox(points_raw)
+print('L = ',bbox[1]-bbox[0])
+print('t = ',bbox[3]-bbox[2])
+
+z = 600
+
+L_raw = bbox[1]-bbox[0]
+
+points_unit = np.copy(points_raw)/L_raw*1000
+
+bbox2 = get_bbox(points_unit)
+print('L_unit = ',bbox2[1]-bbox2[0])
+print('t_unit = ',bbox2[3]-bbox2[2])
+
+L_unit = 1000
+
 # lower profile
 # blunt tail edge
-x_scale = 0.7
-y_scale = 0.9
-z = 60
 
-points = np.copy(points_raw)
-points[:,0] *=x_scale
-points[:,1] *=y_scale
+L_bottom = 50+220
+scale_bottom = L_bottom/L_unit
+points = np.copy(points_unit)
+points *=scale_bottom
+bbox3 = get_bbox(points)
+print('L_bottom = ',bbox3[1]-bbox3[0])
+print('t_bottom = ',bbox3[3]-bbox3[2])
+
 p0_tail = gp_Pnt(points[-1,0],points[-1,1],0)
 p1_tail = gp_Pnt(points[0,0],points[0,1],0)
 edge_tail = BRepBuilderAPI_MakeEdge(p0_tail, p1_tail).Edge()
@@ -55,8 +75,17 @@ spline_edge = BRepBuilderAPI_MakeEdge(bspline_geom).Edge()
 profile_wire = BRepBuilderAPI_MakeWire(spline_edge,edge_tail).Wire()
 
 # upper profile
-
 # blunt tail edge
+
+L_up = 125+275
+scale_up = L_up/L_unit
+points_up = np.copy(points_unit)
+points_up *=scale_up
+
+bbox4 = get_bbox(points_up)
+print('L_up = ',bbox4[1]-bbox4[0])
+print('t_up = ',bbox4[3]-bbox4[2])
+
 points_up = np.copy(points_raw)
 p0_tail_up = gp_Pnt(points_up[-1,0],points_up[-1,1],z)
 p1_tail_up = gp_Pnt(points_up[0,0],points_up[0,1],z)
@@ -99,23 +128,25 @@ lofter.CheckCompatibility(True)
 lofter.Build()
 variable_extrusion = lofter.Shape()
 
-write_step_file(variable_extrusion, "./data_files/rudder.stp")
+if 1:
+    write_step_file(variable_extrusion, "./data_files/rudder.stp")
 
-display, start_display, _, _ = init_display()
-
-
-display.DisplayShape(
-    variable_extrusion, 
-    color='blue', 
-    transparency=0.5, 
-    update=True
-)
-start_display()
+if 1:
+    display, start_display, _, _ = init_display()
 
 
-# fig, ax = plt.subplots(figsize=(8,8),frameon=False)
-# ax.plot(points[:,0],points[:,1],'.-r')
-# ax.axis('equal')
-# # ax.set_axis_off()
-# # plt.savefig('./images/rudder_fit_bezier.png',dpi=200)
-# plt.show()  
+    display.DisplayShape(
+        variable_extrusion, 
+        color='blue', 
+        transparency=0.5, 
+        update=True
+    )
+    start_display()
+
+if 0:
+    fig, ax = plt.subplots(figsize=(8,8),frameon=False)
+    ax.plot(points_unit[:,0],points_unit[:,1],'.-r')
+    ax.axis('equal')
+    # ax.set_axis_off()
+    # plt.savefig('./images/rudder_fit_bezier.png',dpi=200)
+    plt.show()  
