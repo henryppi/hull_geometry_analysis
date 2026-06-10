@@ -68,3 +68,13 @@ for i in range(12):
     fn = './data_files/sections_propeller_sec{:02d}.dat'.format(i)
     fmt='%.18e'
     np.savetxt(fn,sections[i],fmt=fmt,delimiter='\t')
+
+if 0:
+    rad = np.array([72.5,87.0,101.5,116.0,145.0,174.0,203.0,232.0,261.0,275.5,282.8,287.1])
+    fig, ax = plt.subplots()
+    for i in range(12):
+        sec = sections[i]
+        ax.plot(sec[:,0],sec[:,1]+rad[i])
+
+    plt.axis('equal')
+    plt.show()
