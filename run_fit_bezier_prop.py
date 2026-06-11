@@ -35,6 +35,7 @@ for i in range(nsec):
     para_init = [x,y,L,t,h,d,xfrac,wlead,wmid]
 
     para_fit,vert_fit,elem_fit = fit_bezier_prop_section(sec,para_init)
+    # vert_fit[:,0] *= -1
     sections_fit.append(vert_fit)
 
 if 1:
