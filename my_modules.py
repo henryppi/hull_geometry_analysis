@@ -269,123 +269,93 @@ def fit_bezier_rudder(points,para_init):
     return para_fit,vert_fit,elem_fit
 
 def fit_bezier_prop_section(points,para_init):
-    def para_to_nodes(para):
-        # para = [x,y,L,t,h,xfrac,wlead,wfwd,wrev,wtail]
-        #        [0.33, 0.05, 0.25, 0.2, 0.2, 0.2]
+
+    def gen_bezier_section_blade(para,nSeg=51):
+        # para = [x,y,L,t,h,d,xfrac,wlead,wmid]
+        #        [0,1,2,3,4,5,  6,    7,    8 ]
         x = para[0]
         y = para[1]
         L = para[2]
         t = para[3]
         h = para[4]
-        xfrac = para[5]
-        wlead = para[6]
-        wfwd = para[7]
-        wrev = para[8]
-        wtail = para[9]
+        d = para[5]
+        xfrac = para[6]
+        wlead = para[7]
+        wmid = para[8]
 
-        x0 = 0.0 + L 
-        y0 = 0.0 + h
+        x0 = x + L
+        y0 = y + 0.5*h
 
-        x1 = 0.0 + (1-wtail)*L
-        y1 = 0.0 + h
+        x1 = x + xfrac*L + wmid*L
+        y1 = y + 0.5*t + d
 
-        x2 = 0.0 + xfrac*L+wrev*L 
-        y2 = 0.0 + 0.5*t
+        x2 = x + xfrac*L
+        y2 = y + 0.5*t + d
 
-        x3 = 0.0 + xfrac*L
-        y3 = 0.0 + 0.5*t
+        x3 = x + xfrac*L - wmid*L
+        y3 = y + 0.5*t + d
 
-        x4 = x3-wfwd*L
-        y4 = 0.0 + 0.5*t
+        x4 = x
+        y4 = y + wlead*t
 
-        x5 = 0.0
-        y5 = 0.0 + wlead*t
+        x5 = x
+        y5 = y
 
-        x6 = 0.0
-        y6 = 0.0
-        # 
-        x7 = x + x6
-        y7 = y -y5
+        x6 = x 
+        y6 = y - wlead*t
 
-        x8 = x + x4
-        y8 = y -y4
+        x7 = x + xfrac*L - wmid*L
+        y7 = y - 0.5*t + d
 
-        x9 = x + x3
-        y9 = y -y3
+        x8 = x + xfrac*L
+        y8 = y - 0.5*t + d
 
-        x10 = x + x2
-        y10 = y -y2
+        x9 = x + xfrac*L + wmid*L
+        y9 = y - 0.5*t + d
 
-        x11 = x + x1
-        y11 = y -y1
+        x10 = x + L
+        y10 = y - 0.5*h
 
-        x12 = x + x0
-        y12 = y -y0
 
-        x0+=x
-        x1+=x
-        x2+=x
-        x3+=x
-        x4+=x
-        x5+=x
-        x6+=x
+        cp0 = np.array([(x0,y0),(x1,y1),(x2,y2)])
+        cp1 = np.array([(x2,y2),(x3,y3),(x4,y4),(x5,y5)])
+        cp2 = np.array([(x5,y5),(x6,y6),(x7,y7),(x8,y8)])
+        cp3 = np.array([(x8,y8),(x9,y9),(x10,y10)])
 
-        nodesA = np.asfortranarray([\
-                [x0, x1, x2, x3],\
-                [y0, y1, y2, y3],\
-                ])
-        nodesB = np.asfortranarray([\
-                [x3, x4, x5, x6],\
-                [y3, y4, y5, y6],\
-                ])
-        nodesC = np.asfortranarray([\
-                [x6, x7, x8, x9],\
-                [y6, y7, y8, y9],\
-                ])
-        nodesD = np.asfortranarray([\
-                [x9, x10, x11, x12],\
-                [y9, y10, y11, y12],\
-                ])
+        point_list = [cp0,cp1,cp2,cp3]
 
-        return [nodesA,nodesB,nodesC,nodesD]
-
-    def gen_bezier_4point_segments(point_list,nseg=25,tail_open=True):
-        nspline = len(point_list)
-        
-        s_vals = np.linspace(0.0, 1.0, nseg)
+        nt = nSeg
+        t = np.linspace(0,1,nt)
         vertices = np.empty([0,2])
+        nspline = len(point_list)
         for i in range(nspline):
-            seg_nodes = point_list[i]
-            seg_curve = bezier.Curve(seg_nodes, degree=3)
-            if i==nspline-1:
-                seg_vertices = (seg_curve.evaluate_multi(s_vals)).T
+            cp = point_list[i]
+            nknot = cp.shape[0]
+            if nknot==3:
+                vert = np.array([quadratic_bezier(ti, np.array(cp[0]), np.array(cp[1]), np.array(cp[2])) for ti in t])
+            elif nknot==4:
+                vert = np.array([cubic_bezier(ti, np.array(cp[0]), np.array(cp[1]), np.array(cp[2]), np.array(cp[3])) for ti in t])
+
+            if vertices.shape[0]==0:
+                vertices = np.append(vertices,vert,axis=0)
+            elif np.array_equal(vertices[-1,:], vert[0,:]):
+                vertices = np.append(vertices,vert[1:,:],axis=0)
             else:
-                seg_vertices = (seg_curve.evaluate_multi(s_vals[:-1])).T
-            vertices = np.append(vertices,seg_vertices,axis=0)
-        
+                vertices = np.append(vertices,vert,axis=0)
+
         nV = vertices.shape[0]
-        
         elements = np.zeros([nV-1,2],int)
         elements[:,0] = np.arange(0,nV-1,1)
         elements[:,1] = np.arange(1,nV,1)
+        elements = np.append(elements,np.array([[nV-1,0]]),axis=0) # close profile
 
-        if not tail_open==True:#check if working
-            vertices = np.append(vertices,np.array([seg_nodes[:,3]]),axis=0)
-            elements = np.append(elements,np.array([[nV,nV+1]]),axis=0)
-
-        return vertices,elements 
-    
-    def rudder_fun(para,nSeg=25):
-        node_list = para_to_nodes(para)
-        tail_open = True
-        vert,elem = gen_bezier_4point_segments(node_list,nseg=nSeg,tail_open=tail_open)
-        return vert,elem
+        return vertices,elements
 
     def error_function(para,tmp,data):
         LARGE = 1e10
         points = data.reshape([-1,2])
         n_points = points.shape[0]
-        vertices,elements = rudder_fun(para)
+        vertices,elements = gen_bezier_section_blade(para)
         nE = elements.shape[0]
         pDist = LARGE*np.ones(n_points)
         for iE in range(nE):
@@ -399,8 +369,8 @@ def fit_bezier_prop_section(points,para_init):
 
     data = points.ravel()
 
-    # para = [x,y,L,t,h,xfrac,wlead,wfwd,wrev,wtail]
-    #        [0,1,2,3,4,  5  ,  6  , 7  ,  8 ,  9  ] 
+    # para = [x,y,L,t,h,d,xfrac,wlead,wmid]
+    #        [0,1,2,3,4,5,  6,    7,    8 ]
     b_low = len(para_init)*[-np.inf]
     b_high = len(para_init)*[np.inf]
     b_low[3] = 0
@@ -409,15 +379,13 @@ def fit_bezier_prop_section(points,para_init):
     b_low[6] = 0
     b_low[7] = 0
     b_low[8] = 0
-    b_low[9] = 0
     b_high[2] = para_init[2]*1.0
-    b_high[3] = para_init[3]*1.0
-    b_high[4] = para_init[3]*1.0
+    b_high[3] = para_init[3]*1.05
     bounds = (b_low,b_high)
 
     para_fit = nonlinear_least_squares_scipy_bounds(error_function,para_init,bounds,data)
 
-    vert_fit,elem_fit = rudder_fun(para_fit)
+    vert_fit,elem_fit = gen_bezier_section_blade(para_fit)
     return para_fit,vert_fit,elem_fit
 
 

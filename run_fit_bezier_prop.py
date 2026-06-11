@@ -17,7 +17,7 @@ tan_tail = np.array([35,46,57,67,87,107,128,149,165,165,145,103])
 
 sections_fit = []
 
-for i in range(1):
+for i in range(nsec):
     sec = sections[i]
     bbox = get_bbox(sec)
     print(bbox[1]-bbox[0], tan_lead[i]+tan_tail[i])
@@ -27,22 +27,20 @@ for i in range(1):
     L = bbox[1]-bbox[0]
     t = bbox[3]-bbox[2]
     h = 0.05*t
+    d = 0.03*t
     xfrac = 0.33
-    wlead = 0.25
-    wfwd = 0.2
-    wrev = 0.2
-    wtail = 0.2
+    wlead = 0.2
+    wmid = 0.3
 
-    para_init = [x,y,L,t,h,xfrac,wlead,wfwd,wrev,wtail]
+    para_init = [x,y,L,t,h,d,xfrac,wlead,wmid]
 
-    para_fit,vert_fit,elem_fit = fit_bezier_rudder(sec,para_init)
+    para_fit,vert_fit,elem_fit = fit_bezier_prop_section(sec,para_init)
     sections_fit.append(vert_fit)
-
 
 if 1:
     
     fig, ax = plt.subplots()
-    for i in range(1):
+    for i in range(nsec):
         sec = sections[i]
         ax.plot(sec[:,0],sec[:,1]+rad[i])
         fit = sections_fit[i]

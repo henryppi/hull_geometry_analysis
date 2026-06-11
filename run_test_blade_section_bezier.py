@@ -74,6 +74,13 @@ for i in range(nspline):
     else:
         vertices = np.append(vertices,vert,axis=0)
 
+nV = vertices.shape[0]
+
+elements = np.zeros([nV-1,2],int)
+elements[:,0] = np.arange(0,nV-1,1)
+elements[:,1] = np.arange(1,nV,1)
+elements = np.append(elements,np.array([[nV-1,0]]),axis=0) # close profile
+
 fig, ax = plt.subplots()
 ax.plot(vertices[:,0],vertices[:,1])
 plt.axis('equal')
