@@ -42,9 +42,9 @@ if 1:
     fig, ax = plt.subplots()
     for i in range(nsec):
         sec = sections[i]
-        ax.plot(sec[:,0],sec[:,1]+rad[i])
+        ax.plot(sec[:,0]+tan_lead[i],sec[:,1]+rad[i])
         fit = sections_fit[i]
-        ax.plot(fit[:,0],fit[:,1]+rad[i])
+        ax.plot(fit[:,0]+tan_lead[i],fit[:,1]+rad[i])
 
 
     plt.axis('equal')
