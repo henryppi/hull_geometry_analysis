@@ -121,7 +121,7 @@ def applyTransformation(vtkObj,transVtk):
 def main():
     colors = vtk.vtkNamedColors()
 
-    filename = 'PropScan.stl'
+    filename = './CAD/rudder_decimate.stl'
 
     reader = vtk.vtkSTLReader()
     reader.SetFileName(filename)
