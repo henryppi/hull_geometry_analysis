@@ -1,3 +1,11 @@
+import sys
+if sys.platform == "linux" or sys.platform == "linux2":
+    print("Running on Linux")
+    run_os = 'linux'
+elif sys.platform == "darwin":
+    print("Running on macOS")
+    run_os = 'macos'
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -112,11 +120,15 @@ print(f"L xmin xmax: [{xmax-xmin}, {xmin}, {xmax}]")
 print(f"t ymin ymax: [{ymax-ymin}, {ymin}, {ymax}]")
 print(f"H zmin zmax: [{zmax-zmin}, {zmin}, {zmax}]")
 
-if 1:
+if 0:
     write_step_file(rudder_shape, "./data_files/rudder.stp")
 
 if 1:
-    display, start_display, _, _ = init_display()
+    # backend_str ('pyqt5', 'pyqt6', 'pyside2', 'pyside6', 'wx', 'tk')
+    if run_os == 'macos':
+        display, start_display, _, _ = init_display(backend_str="pyside6")
+    else:
+        display, start_display, _, _ = init_display()
     display.DisplayShape(
         rudder_shape, 
         color='blue', 

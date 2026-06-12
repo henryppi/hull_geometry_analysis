@@ -25,3 +25,8 @@ pdfimages -all 16229.pdf rudder_
 
 //extract svg  
 pdftocairo -svg 16229.pdf output.svg
+
+
+// macos display seg fault
+conda install -c conda-forge pyside6
+init_display(backend_str="pyside6")
