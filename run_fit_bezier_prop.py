@@ -13,7 +13,7 @@ for i in range(nsec):
 
 rad = np.array([72.5,87.0,101.5,116.0,145.0,174.0,203.0,232.0,261.0,275.5,282.8,287.1])
 tan_lead = np.array([36,54,71,86,111,124,124,105,59,18,-13,-41])
-tan_tail = np.array([35,46,57,67,87,107,128,149,165,165,145,103])
+tan_tail = np.array([35,46,57,67,87,107,128,149,165,165,145+13,103+41])
 
 sections_fit = []
 
@@ -35,7 +35,7 @@ for i in range(nsec):
     para_init = [x,y,L,t,h,d,xfrac,wlead,wmid]
 
     para_fit,vert_fit,elem_fit = fit_bezier_prop_section(sec,para_init)
-    # vert_fit[:,0] *= -1
+    vert_fit[:,0] *= -1
     sections_fit.append(vert_fit)
 
 if 1:
@@ -43,9 +43,16 @@ if 1:
     fig, ax = plt.subplots()
     for i in range(nsec):
         sec = sections[i]
-        ax.plot(sec[:,0]+tan_lead[i],sec[:,1]+rad[i])
+        # sec[:,0]+=tan_lead[i]
+        # sec[:,0]+=-tan_tail[i]
+        # # sec[:,0]*=-1
+        # sec[:,1]+=rad[i]
+        # ax.plot(sec[:,0],sec[:,1])
         fit = sections_fit[i]
-        ax.plot(fit[:,0]+tan_lead[i],fit[:,1]+rad[i])
+        # fit[:,0]+=tan_lead[i]
+        fit[:,0]+=-tan_tail[i]
+        fit[:,1]+=rad[i]
+        ax.plot(fit[:,0],fit[:,1])
 
 
     plt.axis('equal')
