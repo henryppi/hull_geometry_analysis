@@ -112,11 +112,9 @@ def computePointLineDistance(points,xa,ya,xb,yb):
 def cubic_bezier(t, p0, p1, p2, p3):
     return (1 - t)**3 * p0 + 3 * (1 - t)**2 * t * p1 + 3 * (1 - t) * t**2 * p2 + t**3 * p3
 
-def quadratic_bezier(t, p0, p1, p2):
-    return (1 - t)**2 * p0 + 2 * (1 - t) * t * p1 + t**2 * p2
-    
 
 def fit_bezier_rudder(points,para_init):
+        
     def para_to_nodes(para):
         # para = [x,y,L,t,h,xfrac,wlead,wfwd,wrev,wtail]
         #        [0.33, 0.05, 0.25, 0.2, 0.2, 0.2]
@@ -267,128 +265,6 @@ def fit_bezier_rudder(points,para_init):
 
     vert_fit,elem_fit = rudder_fun(para_fit)
     return para_fit,vert_fit,elem_fit
-
-def fit_bezier_prop_section(points,para_init):
-
-    def gen_bezier_section_blade(para,nSeg=51):
-        # para = [x,y,L,t,h,d,xfrac,wlead,wmid]
-        #        [0,1,2,3,4,5,  6,    7,    8 ]
-        x = para[0]
-        y = para[1]
-        L = para[2]
-        t = para[3]
-        h = para[4]
-        d = para[5]
-        xfrac = para[6]
-        wlead = para[7]
-        wmid = para[8]
-
-        x0 = x + L
-        y0 = y + 0.5*h
-
-        x1 = x + xfrac*L + wmid*L
-        y1 = y + 0.5*t + d
-
-        x2 = x + xfrac*L
-        y2 = y + 0.5*t + d
-
-        x3 = x + xfrac*L - wmid*L
-        y3 = y + 0.5*t + d
-
-        x4 = x
-        y4 = y + wlead*t
-
-        x5 = x
-        y5 = y
-
-        x6 = x 
-        y6 = y - wlead*t
-
-        x7 = x + xfrac*L - wmid*L
-        y7 = y - 0.5*t + d
-
-        x8 = x + xfrac*L
-        y8 = y - 0.5*t + d
-
-        x9 = x + xfrac*L + wmid*L
-        y9 = y - 0.5*t + d
-
-        x10 = x + L
-        y10 = y - 0.5*h
-
-
-        cp0 = np.array([(x0,y0),(x1,y1),(x2,y2)])
-        cp1 = np.array([(x2,y2),(x3,y3),(x4,y4),(x5,y5)])
-        cp2 = np.array([(x5,y5),(x6,y6),(x7,y7),(x8,y8)])
-        cp3 = np.array([(x8,y8),(x9,y9),(x10,y10)])
-
-        point_list = [cp0,cp1,cp2,cp3]
-
-        nt = nSeg
-        t = np.linspace(0,1,nt)
-        vertices = np.empty([0,2])
-        nspline = len(point_list)
-        for i in range(nspline):
-            cp = point_list[i]
-            nknot = cp.shape[0]
-            if nknot==3:
-                vert = np.array([quadratic_bezier(ti, np.array(cp[0]), np.array(cp[1]), np.array(cp[2])) for ti in t])
-            elif nknot==4:
-                vert = np.array([cubic_bezier(ti, np.array(cp[0]), np.array(cp[1]), np.array(cp[2]), np.array(cp[3])) for ti in t])
-
-            if vertices.shape[0]==0:
-                vertices = np.append(vertices,vert,axis=0)
-            elif np.array_equal(vertices[-1,:], vert[0,:]):
-                vertices = np.append(vertices,vert[1:,:],axis=0)
-            else:
-                vertices = np.append(vertices,vert,axis=0)
-
-        nV = vertices.shape[0]
-        elements = np.zeros([nV-1,2],int)
-        elements[:,0] = np.arange(0,nV-1,1)
-        elements[:,1] = np.arange(1,nV,1)
-        elements = np.append(elements,np.array([[nV-1,0]]),axis=0) # close profile
-
-        return vertices,elements
-
-    def error_function(para,tmp,data):
-        LARGE = 1e10
-        points = data.reshape([-1,2])
-        n_points = points.shape[0]
-        vertices,elements = gen_bezier_section_blade(para)
-        nE = elements.shape[0]
-        pDist = LARGE*np.ones(n_points)
-        for iE in range(nE):
-            tmpDist = computePointLineDistance(points, \
-                                            vertices[elements[iE,0],0], \
-                                            vertices[elements[iE,0],1], \
-                                            vertices[elements[iE,1],0], \
-                                            vertices[elements[iE,1],1])
-            pDist = np.minimum(pDist,tmpDist)
-        return pDist
-
-    data = points.ravel()
-
-    # para = [x,y,L,t,h,d,xfrac,wlead,wmid]
-    #        [0,1,2,3,4,5,  6,    7,    8 ]
-    b_low = len(para_init)*[-np.inf]
-    b_high = len(para_init)*[np.inf]
-    b_low[3] = 0
-    b_low[4] = 0
-    b_low[5] = 0
-    b_low[6] = 0
-    b_low[7] = 0
-    b_low[8] = 0
-    b_high[2] = para_init[2]*1.0
-    b_high[3] = para_init[3]*1.05
-    bounds = (b_low,b_high)
-
-    para_fit = nonlinear_least_squares_scipy_bounds(error_function,para_init,bounds,data)
-
-    vert_fit,elem_fit = gen_bezier_section_blade(para_fit)
-    return para_fit,vert_fit,elem_fit
-
-
 
 class TriSurface:
     def __init__(self):

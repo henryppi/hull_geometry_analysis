@@ -1,11 +1,3 @@
-import sys
-if sys.platform == "linux" or sys.platform == "linux2":
-    print("Running on Linux")
-    run_os = 'linux'
-elif sys.platform == "darwin":
-    print("Running on macOS")
-    run_os = 'macos'
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -13,16 +5,17 @@ from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_ThruSections
 from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeWire, BRepBuilderAPI_MakeEdge
 from OCC.Core.gp import gp_Pnt
 # from OCC.Core.gp import gp_Trsf, gp_Vec
+
 # from OCC.BRepPrimAPI import BRepPrimAPI_MakeBox
 from OCC.Display.SimpleGui import init_display
+
 from OCC.Extend.DataExchange import write_step_file
+
 from OCC.Core.gp import gp_Pnt, gp_XOY
 from OCC.Core.TColgp import TColgp_Array1OfPnt
 # from OCC.Core.Geom import Geom_BSplineCurve
 # from OCC.Core.BRepOffsetAPI import BRepOffsetAPI_MakePipeShell
 from OCC.Core.GeomAPI import GeomAPI_PointsToBSpline
-from OCC.Core.Bnd import Bnd_Box
-from OCC.Core.BRepBndLib import brepbndlib
 
 from my_modules import get_bbox
 
@@ -30,107 +23,117 @@ fn = './data_files/section_points_rudder_bezier_fit.dat'
 points_raw = np.loadtxt(fn,delimiter=',',skiprows=0)
 npoints = points_raw.shape[0]
 
-bbox_raw = get_bbox(points_raw)
-L_raw = bbox_raw[1]-bbox_raw[0]
-t_raw = bbox_raw[3]-bbox_raw[2]
-print('L_raw = ',L_raw)
-print('t_raw = ',t_raw)
+bbox = get_bbox(points_raw)
+print('L = ',bbox[1]-bbox[0])
+print('t = ',bbox[3]-bbox[2])
 
 z = 600
-L_top_fwd = 125
-L_top_rev = 275
-L_bot_fwd = 50
-L_bot_rev = 220
+
+L_raw = bbox[1]-bbox[0]
+
+points_unit = np.copy(points_raw)/L_raw*1000
+
+bbox2 = get_bbox(points_unit)
+print('L_unit = ',bbox2[1]-bbox2[0])
+print('t_unit = ',bbox2[3]-bbox2[2])
 
 L_unit = 1000
-L_top = L_top_fwd + L_top_rev
-L_bot = L_bot_fwd + L_bot_rev
 
-points_unit = np.copy(points_raw)
-points_unit[:,0] += -bbox_raw[0]
-points_unit = np.copy(points_unit)/L_raw*L_unit
-
-bbox_unit = get_bbox(points_unit)
-print('L_unit = ',bbox_unit[1]-bbox_unit[0])
-print('t_unit = ',bbox_unit[3]-bbox_unit[2])
-
-scale_top = L_top/L_unit
-scale_bot = L_bot/L_unit
-
-points_top = np.copy(points_unit)
-points_top *= scale_top
-points_top[:,0] += -L_top_fwd
-
-points_bot = np.copy(points_unit)
-points_bot[:,0] *= scale_bot
-points_bot[:,1] *= scale_top # keep top thickness
-points_bot[:,0] += -L_bot_fwd
-
-#==================
-# upper profile
-p0_tail_top = gp_Pnt(points_top[-1,0],points_top[-1,1],z)
-p1_tail_top = gp_Pnt(points_top[0,0],points_top[0,1],z)
-edge_tail_top = BRepBuilderAPI_MakeEdge(p0_tail_top, p1_tail_top).Edge()
-
-point_list_top = []
-for i in range(npoints):
-    point_list_top.append(gp_Pnt(points_top[i,0],points_top[i,1],z))
-
-point_arr_top = TColgp_Array1OfPnt(1, npoints)
-for i, p in enumerate(point_list_top):
-    point_arr_top.SetValue(i + 1, p)
-
-bspline_geom_top = GeomAPI_PointsToBSpline(point_arr_top).Curve()
-spline_edge_top = BRepBuilderAPI_MakeEdge(bspline_geom_top).Edge()
-profile_wire_top = BRepBuilderAPI_MakeWire(spline_edge_top,edge_tail_top).Wire()
-
-#==================
 # lower profile
-p0_tail_bot = gp_Pnt(points_bot[-1,0],points_bot[-1,1],0)
-p1_tail_bot = gp_Pnt(points_bot[0,0],points_bot[0,1],0)
-edge_tail_bot = BRepBuilderAPI_MakeEdge(p0_tail_bot, p1_tail_bot).Edge()
+# blunt tail edge
 
-point_list_bot = []
+L_bottom = 50+220
+scale_bottom = L_bottom/L_unit
+points_bottom = np.copy(points_unit)
+# points_bottom *=scale_bottom
+bbox3 = get_bbox(points_bottom)
+print('L_bottom = ',bbox3[1]-bbox3[0])
+print('t_bottom = ',bbox3[3]-bbox3[2])
+
+p0_tail_bottom = gp_Pnt(points_bottom[-1,0],points_bottom[-1,1],0)
+p1_tail_bottom = gp_Pnt(points_bottom[0,0],points_bottom[0,1],0)
+edge_tail_bottom = BRepBuilderAPI_MakeEdge(p0_tail_bottom, p1_tail_bottom).Edge()
+
+point_list_bottom = []
 for i in range(npoints):
-    point_list_bot.append(gp_Pnt(points_bot[i,0],points_bot[i,1],0))
+    point_list_bottom.append(gp_Pnt(points_bottom[i,0],points_bottom[i,1],0))
 
-point_arr_bot = TColgp_Array1OfPnt(1, npoints)
-for i, p in enumerate(point_list_bot):
-    point_arr_bot.SetValue(i + 1, p)
+point_arr_bottom = TColgp_Array1OfPnt(1, npoints)
+for i, p in enumerate(point_list_bottom):
+    point_arr_bottom.SetValue(i + 1, p)
 
-bspline_geom_bot = GeomAPI_PointsToBSpline(point_arr_bot).Curve()
-spline_edge_bot = BRepBuilderAPI_MakeEdge(bspline_geom_bot).Edge()
-profile_wire_bot = BRepBuilderAPI_MakeWire(spline_edge_bot,edge_tail_bot).Wire()
+# 3. Interpolate the points to create a B-Spline curve geometry
+bspline_geom_bottom = GeomAPI_PointsToBSpline(point_arr_bottom).Curve()
 
-#==================
-# lofting extrusion
+# 4. Turn the geometric curve into a topological Edge
+spline_edge_bottom = BRepBuilderAPI_MakeEdge(bspline_geom_bottom).Edge()
+
+# 5. Build the final topological Wire from the edge
+profile_wire_bottom = BRepBuilderAPI_MakeWire(spline_edge_bottom,edge_tail_bottom).Wire()
+
+# upper profile
+# blunt tail edge
+
+L_up = 125+275
+scale_up = L_up/L_unit
+points_up = np.copy(points_unit)
+# points_up *=scale_up
+
+bbox4 = get_bbox(points_up)
+print('L_up = ',bbox4[1]-bbox4[0])
+print('t_up = ',bbox4[3]-bbox4[2])
+
+points_up = np.copy(points_unit)
+p0_tail_up = gp_Pnt(points_up[-1,0],points_up[-1,1],z)
+p1_tail_up = gp_Pnt(points_up[0,0],points_up[0,1],z)
+edge_tail_up = BRepBuilderAPI_MakeEdge(p0_tail_up, p1_tail_up).Edge()
+
+point_list_up = []
+for i in range(npoints):
+    point_list_up.append(gp_Pnt(points_up[i,0],points_up[i,1],z))
+
+point_arr_up = TColgp_Array1OfPnt(1, npoints)
+for i, p in enumerate(point_list_up):
+    point_arr_up.SetValue(i + 1, p)
+
+# spline = Geom_BSplineCurve(point_arr)
+# section_wire = BRepBuilderAPI_MakeWire(\
+#                BRepBuilderAPI_MakeEdge(spline).Edge() ).Wire()
+
+# 3. Interpolate the points to create a B-Spline curve geometry
+bspline_geom_up = GeomAPI_PointsToBSpline(point_arr_up).Curve()
+
+# 4. Turn the geometric curve into a topological Edge
+spline_edge_up = BRepBuilderAPI_MakeEdge(bspline_geom_up).Edge()
+
+# 5. Build the final topological Wire from the edge
+profile_wire_up = BRepBuilderAPI_MakeWire(spline_edge_up,edge_tail_up).Wire()
+
+
+# 2. Perform the Loft (Variable Extrusion)
+# BRepOffsetAPI_ThruSections(isSolid, ruled, pres3d)
 lofter = BRepOffsetAPI_ThruSections(True, False) # True for solid, False for smooth loft
-lofter.AddWire(profile_wire_bot)
-lofter.AddWire(profile_wire_top)
+
+lofter.AddWire(profile_wire_bottom)
+lofter.AddWire(profile_wire_up)
+
+# Optional settings
 lofter.SetSmoothing(False)
 lofter.CheckCompatibility(True)
+
+# 3. Build the shape
 lofter.Build()
-rudder_shape = lofter.Shape()
-
-
-bbox = Bnd_Box()
-brepbndlib.Add(rudder_shape, bbox)
-xmin, ymin, zmin, xmax, ymax, zmax = bbox.Get()
-print(f"L xmin xmax: [{xmax-xmin}, {xmin}, {xmax}]")
-print(f"t ymin ymax: [{ymax-ymin}, {ymin}, {ymax}]")
-print(f"H zmin zmax: [{zmax-zmin}, {zmin}, {zmax}]")
-
-if 0:
-    write_step_file(rudder_shape, "./data_files/rudder.stp")
+variable_extrusion = lofter.Shape()
 
 if 1:
-    # backend_str ('pyqt5', 'pyqt6', 'pyside2', 'pyside6', 'wx', 'tk')
-    if run_os == 'macos':
-        display, start_display, _, _ = init_display(backend_str="pyside6")
-    else:
-        display, start_display, _, _ = init_display()
+    write_step_file(variable_extrusion, "./data_files/rudder.stp")
+
+if 1:
+    display, start_display, _, _ = init_display()
+
+
     display.DisplayShape(
-        rudder_shape, 
+        variable_extrusion, 
         color='blue', 
         transparency=0.5, 
         update=True
@@ -142,5 +145,5 @@ if 0:
     ax.plot(points_unit[:,0],points_unit[:,1],'.-r')
     ax.axis('equal')
     # ax.set_axis_off()
-    # plt.savefig('./images/rudder_secion.png',dpi=200)
+    # plt.savefig('./images/rudder_fit_bezier.png',dpi=200)
     plt.show()  
